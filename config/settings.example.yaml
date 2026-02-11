@@ -1,0 +1,73 @@
+# Job Search Gmail Monitor Configuration
+# Copy this to settings.yaml and customize
+
+# Keywords to identify job-related emails
+keywords:
+  high_priority:
+    - interview
+    - "interview request"
+    - "schedule a call"
+    - "next steps"
+    - offer
+    - "offer letter"
+  medium_priority:
+    - application
+    - "application status"
+    - recruiter
+    - "phone screen"
+    - "hiring manager"
+    - opportunity
+  low_priority:
+    - talent
+    - "job posting"
+    - career
+
+# Subject line patterns (regex supported)
+subject_patterns:
+  - "re:.*application"
+  - "interview.*"
+  - ".*position.*"
+  - ".*opportunity.*"
+  - ".*recruiter.*"
+
+# Domains/companies to always flag
+tracked_domains:
+  - greenhouse.io
+  - lever.co
+  - ashbyhq.com
+  - workday.com
+  - myworkdayjobs.com
+
+# Notification settings
+notifications:
+  email:
+    enabled: true
+    digest_frequency: 3600  # Send summary every hour (in seconds)
+    subject: "Job Search Update"
+  
+  sms:
+    enabled: true
+    only_high_priority: true  # Only send SMS for high priority emails
+  
+  ai_classification:
+    enabled: true
+    confidence_threshold: 0.7  # 0-1, higher = more conservative
+
+# Gmail settings
+gmail:
+  max_results: 50  # Number of emails to check per run
+  labels_to_check:
+    - INBOX
+    - IMPORTANT
+  
+  # How far back to check (in days)
+  lookback_days: 7
+
+# Exclusions (emails to ignore)
+exclude:
+  senders:
+    - noreply@linkedin.com
+    - jobs-listings@linkedin.com
+  subjects:
+    - "Daily job alert"
+    - "Recommended for you"

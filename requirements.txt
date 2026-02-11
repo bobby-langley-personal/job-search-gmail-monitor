@@ -1,0 +1,28 @@
+# Gmail API
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+google-api-python-client==2.110.0
+
+# Email notifications
+secure-smtplib==0.1.1
+
+# SMS notifications (optional)
+twilio==8.11.1
+
+# Configuration
+PyYAML==6.0.1
+python-dotenv==1.0.0
+
+# AI/ML for classification
+anthropic==0.39.0
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Logging
+coloredlogs==15.0.1
+
+# Testing
+pytest==7.4.3
+pytest-cov==4.1.0
