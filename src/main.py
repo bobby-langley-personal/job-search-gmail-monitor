@@ -17,6 +17,7 @@ import coloredlogs
 from gmail_client import GmailClient
 from classifier import EmailClassifier
 from notifier import Notifier
+from state_manager import EmailStateManager
 from utils import load_config, setup_logging
 
 
@@ -75,6 +76,7 @@ def main():
         gmail_client = GmailClient()
         classifier = EmailClassifier(config)
         notifier = Notifier(config)
+        state_manager = EmailStateManager()
     except Exception as e:
         logger.error(f"Failed to initialize components: {e}")
         sys.exit(1)
@@ -100,19 +102,29 @@ def main():
                     job_related_emails.append({
                         'email': email,
                         'priority': classification['priority'],
-                        'confidence': classification['confidence']
+                        'confidence': classification['confidence'],
+                        'reasons': classification['reasons']
                     })
             
             logger.info(
                 f"Identified {len(job_related_emails)} job-related emails"
             )
             
-            # Send notifications
-            if job_related_emails:
-                notifier.send_notifications(job_related_emails)
+            # Filter to only new emails (delta detection)
+            new_emails = state_manager.get_new_emails(job_related_emails)
+            
+            if len(new_emails) < len(job_related_emails):
+                logger.info(
+                    f"Filtered to {len(new_emails)} new emails "
+                    f"({len(job_related_emails) - len(new_emails)} already seen)"
+                )
+            
+            # Send notifications only for new emails
+            if new_emails:
+                notifier.send_notifications(new_emails)
                 logger.info("Notifications sent successfully")
             else:
-                logger.info("No job-related emails found")
+                logger.info("No new job-related emails found")
                 
         except Exception as e:
             logger.error(f"Error during email check: {e}", exc_info=True)

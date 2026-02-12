@@ -39,3 +39,8 @@ htmlcov/
 # Local development
 .local/
 scratch/
+
+# AWS SAM
+.aws-sam/
+samconfig.toml
+

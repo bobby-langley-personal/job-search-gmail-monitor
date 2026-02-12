@@ -86,3 +86,16 @@ def format_email_preview(email: dict, max_length: int = 100) -> str:
     sender = email.get('from', 'Unknown')[:max_length]
     
     return f"{subject}\nFrom: {sender}"
+
+
+def get_gmail_url(email_id: str) -> str:
+    """
+    Generate Gmail web URL for a specific email.
+    
+    Args:
+        email_id: Gmail message ID
+        
+    Returns:
+        Full Gmail URL to view the email in browser
+    """
+    return f"https://mail.google.com/mail/u/0/#inbox/{email_id}"
