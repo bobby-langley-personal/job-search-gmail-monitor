@@ -105,7 +105,8 @@ def lambda_handler(event, context):
                     'confidence': classification['confidence'],
                     'reasons': classification['reasons']
                 })
-        Filter to only new emails (delta detection)
+        
+        # Filter to only new emails (delta detection)
         new_emails = state_manager.get_new_emails(job_related_emails)
         
         if len(new_emails) < len(job_related_emails):
@@ -128,10 +129,7 @@ def lambda_handler(event, context):
                 'message': 'Monitor check completed successfully',
                 'emails_checked': len(emails),
                 'job_related_found': len(job_related_emails),
-                'new_emails': len(new
-                'message': 'Monitor check completed successfully',
-                'emails_checked': len(emails),
-                'job_related_found': len(job_related_emails)
+                'new_emails': len(new_emails)
             })
         }
         
