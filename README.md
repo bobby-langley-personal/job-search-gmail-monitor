@@ -1,6 +1,6 @@
 # Job Search Gmail Monitor
 
-A smart email monitoring tool that helps you stay on top of job applications, interview requests, and recruiter outreach during your job search.
+A smart email monitoring tool that helps you stay on top of job applications, interview requests, and recruiter outreach during your job search. One of my first experiences utilizing AI code companion to make quick work of a basic idea.
 
 ## Features
 
