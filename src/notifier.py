@@ -11,6 +11,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import smtplib
 from datetime import datetime
+from utils import get_gmail_url
 
 logger = logging.getLogger(__name__)
 
@@ -163,11 +164,17 @@ class Notifier:
             """
             for item in high_priority:
                 email = item['email']
+                gmail_url = get_gmail_url(email['id'])
+                triggers = '<br>'.join(f"• {r}" for r in item.get('reasons', []))
                 html += f"""
                     <div class="email-item">
-                        <div class="subject">{email['subject']}</div>
+                        <div class="subject"><a href="{gmail_url}" style="color: #1a73e8; text-decoration: none;">{email['subject']}</a></div>
                         <div class="from">From: {email['from']}</div>
                         <div class="snippet">{email['snippet'][:150]}...</div>
+                        <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                            <strong>Triggers:</strong><br>{triggers}
+                        </div>
+                        <a href="{gmail_url}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background-color: #1a73e8; color: white; text-decoration: none; border-radius: 4px;">View in Gmail</a>
                     </div>
                 """
             html += "</div>"
@@ -179,10 +186,16 @@ class Notifier:
             """
             for item in medium_priority:
                 email = item['email']
+                gmail_url = get_gmail_url(email['id'])
+                triggers = '<br>'.join(f"• {r}" for r in item.get('reasons', []))
                 html += f"""
                     <div class="email-item">
-                        <div class="subject">{email['subject']}</div>
+                        <div class="subject"><a href="{gmail_url}" style="color: #1a73e8; text-decoration: none;">{email['subject']}</a></div>
                         <div class="from">From: {email['from']}</div>
+                        <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                            <strong>Triggers:</strong><br>{triggers}
+                        </div>
+                        <a href="{gmail_url}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background-color: #1a73e8; color: white; text-decoration: none; border-radius: 4px;">View in Gmail</a>
                     </div>
                 """
             html += "</div>"
@@ -194,10 +207,16 @@ class Notifier:
             """
             for item in low_priority:
                 email = item['email']
+                gmail_url = get_gmail_url(email['id'])
+                triggers = '<br>'.join(f"• {r}" for r in item.get('reasons', []))
                 html += f"""
                     <div class="email-item">
-                        <div class="subject">{email['subject']}</div>
+                        <div class="subject"><a href="{gmail_url}" style="color: #1a73e8; text-decoration: none;">{email['subject']}</a></div>
                         <div class="from">From: {email['from']}</div>
+                        <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                            <strong>Triggers:</strong><br>{triggers}
+                        </div>
+                        <a href="{gmail_url}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background-color: #1a73e8; color: white; text-decoration: none; border-radius: 4px;">View in Gmail</a>
                     </div>
                 """
             html += "</div>"

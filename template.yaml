@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Job Search Gmail Monitor - AWS Lambda Deployment
+
+Parameters:
+  AnthropicApiKey:
+    Type: String
+    Description: Anthropic API key for AI classification
+    NoEcho: true
+    Default: ''
+  
+  SmtpUsername:
+    Type: String
+    Description: Gmail SMTP username
+    Default: ''
+  
+  SmtpPassword:
+    Type: String
+    Description: Gmail SMTP password (app-specific password)
+    NoEcho: true
+    Default: ''
+  
+  NotificationEmail:
+    Type: String
+    Description: Email address to receive notifications
+    Default: ''
+  
+  GmailCredentials:
+    Type: String
+    Description: Base64-encoded Gmail OAuth credentials JSON
+    NoEcho: true
+    Default: ''
+  
+  GmailToken:
+    Type: String
+    Description: Base64-encoded Gmail token pickle
+    NoEcho: true
+    Default: ''
+  
+  CheckIntervalMinutes:
+    Type: Number
+    Description: How often to check for emails (in minutes)
+    Default: 5
+    MinValue: 1
+    MaxValue: 60
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 512
+    Runtime: python3.12
+
+Resources:
+  GmailMonitorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: job-search-gmail-monitor
+      CodeUri: .
+      Handler: lambda_handler.lambda_handler
+      Description: Monitors Gmail for job-related emails
+      Environment:
+        Variables:
+          ANTHROPIC_API_KEY: !Ref AnthropicApiKey
+          SMTP_SERVER: smtp.gmail.com
+          SMTP_PORT: 587
+          SMTP_USERNAME: !Ref SmtpUsername
+          SMTP_PASSWORD: !Ref SmtpPassword
+          NOTIFICATION_EMAIL: !Ref NotificationEmail
+          GMAIL_CREDENTIALS_B64: !Ref GmailCredentials
+          GMAIL_TOKEN_B64: !Ref GmailToken
+          LOG_LEVEL: INFO
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: !Sub 'rate(${CheckIntervalMinutes} minutes)'
+            Description: Trigger Gmail monitor check
+            Enabled: true
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: '*'
+
+  GmailMonitorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${GmailMonitorFunction}'
+      RetentionInDays: 7
+
+Outputs:
+  GmailMonitorFunction:
+    Description: Gmail Monitor Lambda Function ARN
+    Value: !GetAtt GmailMonitorFunction.Arn
+  
+  GmailMonitorFunctionName:
+    Description: Gmail Monitor Lambda Function Name
+    Value: !Ref GmailMonitorFunction
+  
+  ScheduleExpression:
+    Description: EventBridge schedule expression
+    Value: !Sub 'rate(${CheckIntervalMinutes} minutes)'

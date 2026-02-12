@@ -32,7 +32,11 @@ class GmailClient:
             credentials_path: Path to OAuth credentials JSON file
         """
         self.credentials_path = credentials_path
-        self.token_path = 'config/token.pickle'
+        # Use /tmp for token in Lambda, local path otherwise
+        if credentials_path.startswith('/tmp'):
+            self.token_path = '/tmp/config/token.pickle'
+        else:
+            self.token_path = 'config/token.pickle'
         self.service = None
         self._authenticate()
     
