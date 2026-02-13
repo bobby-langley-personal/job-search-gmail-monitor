@@ -2,7 +2,7 @@
 Email State Manager
 
 Tracks which emails have been processed to avoid duplicate notifications.
-Stores state in a JSON file (local development) or /tmp (Lambda).
+Stores state in S3 (Lambda) or local JSON file (development).
 """
 
 import json
@@ -18,25 +18,42 @@ logger = logging.getLogger(__name__)
 class EmailStateManager:
     """Manages state of processed emails to detect deltas."""
     
-    def __init__(self, state_file='email_state.json'):
+    def __init__(self, state_file='email_state.json', s3_bucket=None):
         """
         Initialize state manager.
         
         Args:
-            state_file: Name of the state file (will be in logs/ locally or /tmp in Lambda)
+            state_file: Name of the state file
+            s3_bucket: S3 bucket name for Lambda persistence (auto-detected if None)
         """
-        # Use /tmp in Lambda, logs/ directory locally
-        if os.path.exists('/var/task'):  # Lambda environment
-            self.state_dir = Path('/tmp')
+        # Detect environment
+        self.is_lambda = os.path.exists('/var/task')
+        
+        if self.is_lambda:
+            # Lambda: use S3 for persistent storage
+            import boto3
+            self.s3_client = boto3.client('s3')
+            self.s3_bucket = s3_bucket or os.environ.get('STATE_BUCKET', 'job-search-gmail-monitor-state')
+            self.s3_key = f'state/{state_file}'
+            logger.info(f"Using S3 for state: s3://{self.s3_bucket}/{self.s3_key}")
         else:
+            # Local: use file system
             self.state_dir = Path('logs')
             self.state_dir.mkdir(exist_ok=True)
+            self.state_file = self.state_dir / state_file
+            logger.info(f"Using local file for state: {self.state_file}")
         
-        self.state_file = self.state_dir / state_file
         self.state = self._load_state()
     
     def _load_state(self) -> Dict:
-        """Load state from file."""
+        """Load state from S3 (Lambda) or file (local)."""
+        if self.is_lambda:
+            return self._load_from_s3()
+        else:
+            return self._load_from_file()
+    
+    def _load_from_file(self) -> Dict:
+        """Load state from local file."""
         if self.state_file.exists():
             try:
                 with open(self.state_file, 'r') as f:
@@ -44,20 +61,69 @@ class EmailStateManager:
                 logger.info(f"Loaded state with {len(state.get('seen_emails', []))} seen emails")
                 return state
             except Exception as e:
-                logger.warning(f"Failed to load state: {e}, starting fresh")
+                logger.warning(f"Failed to load state from file: {e}, starting fresh")
         
         return {
             'seen_emails': [],
             'last_run': None
         }
     
-    def _save_state(self):
-        """Save state to file."""
+    def _load_from_s3(self) -> Dict:
+        """Load state from S3."""
         try:
-            self.state['last_run'] = datetime.now().isoformat()
+            response = self.s3_client.get_object(Bucket=self.s3_bucket, Key=self.s3_key)
+            state = json.loads(response['Body'].read().decode('utf-8'))
+            logger.info(f"Loaded state from S3 with {len(state.get('seen_emails', []))} seen emails")
+            return state
+        except self.s3_client.exceptions.NoSuchKey:
+            logger.info("No existing state in S3, starting fresh")
+            return {
+                'seen_emails': [],
+                'last_run': None
+            }
+        except self.s3_client.exceptions.NoSuchBucket:
+            logger.warning(f"S3 bucket {self.s3_bucket} does not exist, will create on first save")
+            return {
+                'seen_emails': [],
+                'last_run': None
+            }
+        except Exception as e:
+            logger.error(f"Failed to load state from S3: {e}, starting fresh")
+            return {
+                'seen_emails': [],
+                'last_run': None
+            }
+    
+    def _save_state(self):
+        """Save state to S3 (Lambda) or file (local)."""
+        self.state['last_run'] = datetime.now().isoformat()
+        
+        if self.is_lambda:
+            self._save_to_s3()
+        else:
+            self._save_to_file()
+    
+    def _save_to_file(self):
+        """Save state to local file."""
+        try:
             with open(self.state_file, 'w') as f:
                 json.dump(self.state, f, indent=2)
             logger.debug(f"State saved to {self.state_file}")
+        except Exception as e:
+            logger.error(f"Failed to save state to file: {e}")
+    
+    def _save_to_s3(self):
+        """Save state to S3."""
+        try:
+            self.s3_client.put_object(
+                Bucket=self.s3_bucket,
+                Key=self.s3_key,
+                Body=json.dumps(self.state, indent=2),
+                ContentType='application/json'
+            )
+            logger.debug(f"State saved to S3: s3://{self.s3_bucket}/{self.s3_key}")
+        except Exception as e:
+            logger.error(f"Failed to save state to S3: {e}")
         except Exception as e:
             logger.error(f"Failed to save state: {e}")
     

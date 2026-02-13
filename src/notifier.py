@@ -130,7 +130,6 @@ class Notifier:
         low_priority: List[Dict]
     ) -> str:
         """Build HTML content for email digest."""
-        timestamp = datetime.now().strftime('%B %d, %Y at %I:%M %p')
         
         html = f"""
         <html>
@@ -153,7 +152,6 @@ class Notifier:
             <div class="container">
                 <div class="header">
                     <h1>Job Search Update</h1>
-                    <p>{timestamp}</p>
                 </div>
         """
         
@@ -166,6 +164,8 @@ class Notifier:
                 email = item['email']
                 gmail_url = get_gmail_url(email['id'])
                 triggers = '<br>'.join(f"• {r}" for r in item.get('reasons', []))
+                # Show message ID for mobile users who can manually search
+                msg_preview = email['id'][:16] + '...' if len(email['id']) > 16 else email['id']
                 html += f"""
                     <div class="email-item">
                         <div class="subject"><a href="{gmail_url}" style="color: #1a73e8; text-decoration: none;">{email['subject']}</a></div>
@@ -175,6 +175,7 @@ class Notifier:
                             <strong>Triggers:</strong><br>{triggers}
                         </div>
                         <a href="{gmail_url}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background-color: #1a73e8; color: white; text-decoration: none; border-radius: 4px;">View in Gmail</a>
+                        <div style="font-size: 0.75em; color: #999; margin-top: 5px;">Mobile: Search Gmail for subject "{email['subject'][:30]}..."</div>
                     </div>
                 """
             html += "</div>"
@@ -196,6 +197,7 @@ class Notifier:
                             <strong>Triggers:</strong><br>{triggers}
                         </div>
                         <a href="{gmail_url}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background-color: #1a73e8; color: white; text-decoration: none; border-radius: 4px;">View in Gmail</a>
+                        <div style="font-size: 0.75em; color: #999; margin-top: 5px;">Mobile: Search Gmail for subject "{email['subject'][:30]}..."</div>
                     </div>
                 """
             html += "</div>"
@@ -217,6 +219,7 @@ class Notifier:
                             <strong>Triggers:</strong><br>{triggers}
                         </div>
                         <a href="{gmail_url}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background-color: #1a73e8; color: white; text-decoration: none; border-radius: 4px;">View in Gmail</a>
+                        <div style="font-size: 0.75em; color: #999; margin-top: 5px;">Mobile: Search Gmail for subject "{email['subject'][:30]}..."</div>
                     </div>
                 """
             html += "</div>"

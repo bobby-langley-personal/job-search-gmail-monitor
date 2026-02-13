@@ -37,12 +37,10 @@ Parameters:
     NoEcho: true
     Default: ''
   
-  CheckIntervalMinutes:
-    Type: Number
-    Description: How often to check for emails (in minutes)
-    Default: 5
-    MinValue: 1
-    MaxValue: 60
+  ScheduleTimezone:
+    Type: String
+    Description: Timezone for scheduled runs
+    Default: America/New_York
 
 Globals:
   Function:
@@ -69,12 +67,19 @@ Resources:
           GMAIL_CREDENTIALS_B64: !Ref GmailCredentials
           GMAIL_TOKEN_B64: !Ref GmailToken
           LOG_LEVEL: INFO
+          STATE_BUCKET: !Ref StateBucket
       Events:
-        ScheduleEvent:
+        MorningSchedule:
           Type: Schedule
           Properties:
-            Schedule: !Sub 'rate(${CheckIntervalMinutes} minutes)'
-            Description: Trigger Gmail monitor check
+            Schedule: 'cron(0 13 * * ? *)'  # 8 AM EST (1 PM UTC)
+            Description: Morning Gmail monitor check (8 AM EST)
+            Enabled: true
+        EveningSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: 'cron(0 1 * * ? *)'   # 8 PM EST (1 AM UTC next day)
+            Description: Evening Gmail monitor check (8 PM EST)
             Enabled: true
       Policies:
         - Statement:
@@ -84,6 +89,30 @@ Resources:
               - logs:CreateLogStream
               - logs:PutLogEvents
             Resource: '*'
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+            Resource: !Sub '${StateBucket.Arn}/state/*'
+
+  StateBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain  # Keep bucket and state data even if stack is deleted
+    UpdateReplacePolicy: Retain  # Keep bucket if resource needs replacement
+    Properties:
+      BucketName: !Sub 'job-search-gmail-monitor-state-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
 
   GmailMonitorLogGroup:
     Type: AWS::Logs::LogGroup
@@ -101,5 +130,5 @@ Outputs:
     Value: !Ref GmailMonitorFunction
   
   ScheduleExpression:
-    Description: EventBridge schedule expression
-    Value: !Sub 'rate(${CheckIntervalMinutes} minutes)'
+    Description: EventBridge schedule times
+    Value: 8 AM EST (1 PM UTC) and 8 PM EST (1 AM UTC)

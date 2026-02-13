@@ -75,11 +75,12 @@ Deploy to AWS Lambda for automatic monitoring without keeping your computer runn
 
 ### Why AWS Lambda?
 
-- ✅ **Free Tier**: 1M requests/month free (you'll use ~8,640/month at 5-min intervals)
+- ✅ **Free Tier**: 1M requests/month free (you'll use ~60/month at 2x daily)
 - ✅ **No Server Management**: AWS handles everything
 - ✅ **Highly Reliable**: 99.95% uptime SLA
 - ✅ **Auto-scaling**: Handles any load
 - ✅ **Cost**: **$0/month** on free tier
+- ✅ **Smart Schedule**: Runs at 8 AM and 8 PM EST to optimize API usage
 
 ### Setup Prerequisites
 
@@ -107,9 +108,16 @@ That's it! The script handles:
 - Building the Lambda function
 - Encoding credentials securely
 - Deploying to AWS
-- Setting up 5-minute schedule (via EventBridge)
+- Setting up 2x daily schedule at 8 AM and 8 PM EST (via EventBridge)
 
 ### Monitoring Your Deployment
+
+#### Manual Testing (On-Demand)
+```powershell
+.\test-lambda-manual.ps1
+```
+
+This triggers the function immediately, useful for testing without waiting for scheduled runs.
 
 #### View Real-time Logs
 ```powershell
@@ -142,23 +150,31 @@ aws lambda get-function --function-name job-search-gmail-monitor
 **EventBridge Schedule**:
 1. Go to [EventBridge Console](https://console.aws.amazon.com/events/)
 2. Click "Rules" in sidebar
-3. Find rule with `job-search-gmail-monitor` in name
-4. Verify "State: Enabled" and "Schedule: rate(5 minutes)"
+3. Find rules with `job-search-gmail-monitor` in name
+4. Verify "State: Enabled" and schedules:
+   - Morning: "cron(0 13 * * ? *)" = 8 AM EST
+   - Evening: "cron(0 1 * * ? *)" = 8 PM EST
 
 ### Understanding Lambda Execution
 
-**What happens every 5 minutes:**
+**What happens at 8 AM and 8 PM EST:**
 
-1. **EventBridge triggers** Lambda function
+1. **EventBridge triggers** Lambda function at scheduled times
 2. **Lambda wakes up** and loads your credentials from environment variables
 3. **Connects to Gmail** and fetches last 50 emails
 4. **Classifies emails** using keywords and AI (if enabled)
 5. **Detects deltas** - only processes NEW emails since last run
-6. **Sends notification** email if new job-related emails found
+6. **Sends notification** email if new job-related emails found (excluding application confirmations)
 7. **Saves state** to /tmp for next run
 8. **Lambda shuts down** (no cost while idle)
 
 **Costs per execution** (on free tier): $0
+
+**Notifications**:
+- Only sent when NEW job-related emails are found
+- Filters out duplicate notifications automatically
+- Excludes application submission confirmations
+- Email timestamp shows YOUR local timezone
 
 ### Debugging Common Issues
 
@@ -221,14 +237,20 @@ If state resets frequently (cold starts), consider upgrading to S3-backed state 
 1. Edit `config/settings.yaml`
 2. Redeploy: `.\deploy-aws.ps1`
 
-**Change check frequency:**
-Edit `template.yaml`:
+**Change schedule times:**
+Edit `template.yaml` cron expressions:
 ```yaml
-Parameters:
-  CheckIntervalMinutes:
-    Default: 5  # Change to 1, 10, 15, etc.
+MorningSchedule:
+  Schedule: 'cron(0 13 * * ? *)'  # 8 AM EST = 1 PM UTC
+EveningSchedule:
+  Schedule: 'cron(0 1 * * ? *)'   # 8 PM EST = 1 AM UTC
 ```
 Then redeploy.
+
+**Test manually without waiting for schedule:**
+```powershell
+.\test-lambda-manual.ps1
+```
 
 **Update environment variables:**
 1. Edit `.env` file locally
@@ -245,9 +267,9 @@ Then redeploy.
 **Expected monthly cost:** $0 (free tier covers everything)
 
 **What uses free tier:**
-- Lambda: 8,640 invocations/month (checks every 5 min)
-- CloudWatch: ~100 MB logs/month
-- EventBridge: 8,640 events/month (free forever)
+- Lambda: ~60 invocations/month (2x daily)
+- CloudWatch: ~10 MB logs/month
+- EventBridge: 60 events/month (free forever)
 
 ### Advanced: Multi-Environment Setup
 
