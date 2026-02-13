@@ -96,6 +96,8 @@ def get_gmail_url(email_id: str) -> str:
         email_id: Gmail message ID
         
     Returns:
-        Full Gmail URL to view the email in browser
+        Full Gmail URL to view the email (works on web and mobile)
     """
-    return f"https://mail.google.com/mail/u/0/#inbox/{email_id}"
+    # Use 'all' instead of 'inbox' for better mobile compatibility
+    # and to handle archived/labeled emails
+    return f"https://mail.google.com/mail/u/0/#all/{email_id}"

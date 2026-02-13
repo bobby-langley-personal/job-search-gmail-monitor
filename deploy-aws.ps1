@@ -95,7 +95,6 @@ $parameters = @(
     "NotificationEmail=$($envVars['NOTIFICATION_EMAIL'])"
     "GmailCredentials=$credentialsB64"
     "GmailToken=$tokenB64"
-    "CheckIntervalMinutes=5"
 )
 
 $parameterOverrides = $parameters -join " "
