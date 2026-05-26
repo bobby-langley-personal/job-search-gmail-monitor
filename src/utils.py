@@ -91,10 +91,10 @@ def format_email_preview(email: dict, max_length: int = 100) -> str:
 def get_gmail_url(email_id: str) -> str:
     """
     Generate Gmail web URL for a specific email.
-    
+
     Args:
         email_id: Gmail message ID
-        
+
     Returns:
         Full Gmail URL to view the email (works on web and mobile)
     """

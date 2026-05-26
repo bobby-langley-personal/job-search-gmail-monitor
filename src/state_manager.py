@@ -124,8 +124,6 @@ class EmailStateManager:
             logger.debug(f"State saved to S3: s3://{self.s3_bucket}/{self.s3_key}")
         except Exception as e:
             logger.error(f"Failed to save state to S3: {e}")
-        except Exception as e:
-            logger.error(f"Failed to save state: {e}")
     
     def get_new_emails(self, all_job_emails: List[Dict]) -> List[Dict]:
         """
@@ -186,8 +184,14 @@ class EmailStateManager:
     
     def get_stats(self) -> Dict:
         """Get statistics about tracked state."""
-        return {
+        stats = {
             'total_seen': len(self.state.get('seen_emails', [])),
-            'last_run': self.state.get('last_run'),
-            'state_file': str(self.state_file)
+            'last_run': self.state.get('last_run')
         }
+        
+        if self.is_lambda:
+            stats['storage'] = f's3://{self.s3_bucket}/{self.s3_key}'
+        else:
+            stats['state_file'] = str(self.state_file)
+        
+        return stats
