@@ -14,7 +14,7 @@ PyYAML==6.0.1
 python-dotenv==1.0.0
 
 # AI/ML for classification
-anthropic==0.39.0
+anthropic>=1.0.0
 httpx==0.27.0
 anyio==4.3.0
 

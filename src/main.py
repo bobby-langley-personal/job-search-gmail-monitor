@@ -121,7 +121,8 @@ def main():
             
             # Send notifications only for new emails
             if new_emails:
-                notifier.send_notifications(new_emails)
+                warnings = [classifier.ai_error] if classifier.ai_error else []
+                notifier.send_notifications(new_emails, warnings=warnings)
                 logger.info("Notifications sent successfully")
             else:
                 logger.info("No new job-related emails found")

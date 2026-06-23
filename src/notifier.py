@@ -63,45 +63,49 @@ class Notifier:
                 logger.warning("twilio package not installed, SMS disabled")
                 self.sms_enabled = False
     
-    def send_notifications(self, job_emails: List[Dict]):
+    def send_notifications(self, job_emails: List[Dict], warnings: List[str] = None):
         """
         Send notifications for job-related emails.
-        
+
         Args:
             job_emails: List of classified email dictionaries
+            warnings: Optional list of warning messages to show at the bottom of the email
         """
         if not job_emails:
             return
-        
+
+        warnings = warnings or []
+
         # Sort by priority
         high_priority = [e for e in job_emails if e['priority'] == 'high']
         medium_priority = [e for e in job_emails if e['priority'] == 'medium']
         low_priority = [e for e in job_emails if e['priority'] == 'low']
-        
+
         # Send email notification
         if self.email_enabled:
-            self._send_email_digest(high_priority, medium_priority, low_priority)
-        
+            self._send_email_digest(high_priority, medium_priority, low_priority, warnings)
+
         # Send SMS for high priority only
         if self.sms_enabled and high_priority:
             if not self.sms_high_priority_only or high_priority:
                 self._send_sms_alert(high_priority)
     
     def _send_email_digest(
-        self, 
+        self,
         high_priority: List[Dict],
         medium_priority: List[Dict],
-        low_priority: List[Dict]
+        low_priority: List[Dict],
+        warnings: List[str] = None
     ):
         """Send email digest of job-related emails."""
         try:
             subject = self.config.get('notifications', {}).get(
                 'email', {}
             ).get('subject', 'Job Search Update')
-            
+
             # Build HTML email
             html_content = self._build_email_html(
-                high_priority, medium_priority, low_priority
+                high_priority, medium_priority, low_priority, warnings or []
             )
             
             msg = MIMEMultipart('alternative')
@@ -127,7 +131,8 @@ class Notifier:
         self,
         high_priority: List[Dict],
         medium_priority: List[Dict],
-        low_priority: List[Dict]
+        low_priority: List[Dict],
+        warnings: List[str] = None
     ) -> str:
         """Build HTML content for email digest."""
         
@@ -224,6 +229,18 @@ class Notifier:
                 """
             html += "</div>"
         
+        if warnings:
+            warning_items = ''.join(f'<p style="margin: 4px 0;">⚠️ {w}</p>' for w in warnings)
+            html += f"""
+                <div style="margin-top: 20px; padding: 12px 16px; background-color: #fff3cd;
+                            border-left: 4px solid #e65100; border-radius: 4px;">
+                    <strong style="color: #e65100;">Action Required</strong>
+                    <div style="color: #5d4037; margin-top: 6px; font-size: 0.9em;">
+                        {warning_items}
+                    </div>
+                </div>
+            """
+
         total = len(high_priority) + len(medium_priority) + len(low_priority)
         html += f"""
                 <div class="footer">

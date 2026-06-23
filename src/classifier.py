@@ -5,8 +5,11 @@ Identifies job-related emails using keyword matching, pattern recognition,
 and optional AI classification.
 """
 
+import json
 import re
 import logging
+import os
+import urllib.request
 from typing import Dict, List
 
 logger = logging.getLogger(__name__)
@@ -31,14 +34,24 @@ class EmailClassifier:
             'ai_classification', {}
         ).get('enabled', False)
         
+        self.ai_error = None
         if self.ai_enabled:
             try:
-                import os
                 from anthropic import Anthropic
                 api_key = os.getenv('ANTHROPIC_API_KEY')
                 if api_key:
                     self.ai_client = Anthropic(api_key=api_key)
-                    logger.info("AI classification enabled")
+                    self.ai_model = self._select_model(api_key)
+                    if self.ai_model is None:
+                        self.ai_enabled = False
+                        self.ai_error = (
+                            "AI model selection failed: could not retrieve available models "
+                            "from the Anthropic API. AI classification is disabled. "
+                            "Check your ANTHROPIC_API_KEY and update the code if needed."
+                        )
+                        logger.error(self.ai_error)
+                    else:
+                        logger.info(f"AI classification enabled using {self.ai_model}")
                 else:
                     logger.warning("AI enabled but ANTHROPIC_API_KEY not set")
                     self.ai_enabled = False
@@ -207,6 +220,25 @@ class EmailClassifier:
         
         return {'match': False, 'priority': 'low', 'reasons': []}
     
+    def _select_model(self, api_key: str) -> str | None:
+        """Query the models API and return the cheapest available tier (haiku → sonnet → opus).
+        Returns None if the models list cannot be fetched."""
+        try:
+            req = urllib.request.Request(
+                'https://api.anthropic.com/v1/models',
+                headers={'x-api-key': api_key, 'anthropic-version': '2023-06-01'}
+            )
+            with urllib.request.urlopen(req, timeout=5) as r:
+                data = json.loads(r.read())
+            model_ids = [m['id'] for m in data.get('data', [])]
+            for tier in ('haiku', 'sonnet', 'opus'):
+                matches = [m for m in model_ids if tier in m]
+                if matches:
+                    return matches[0]  # API returns newest first
+        except Exception as e:
+            logger.error(f"Could not fetch model list: {e}")
+        return None
+
     def _ai_classify(self, email: Dict) -> Dict:
         """Use AI to classify email (if enabled)."""
         try:
@@ -229,12 +261,11 @@ Medium priority: application updates, recruiter outreach
 Low priority: general job postings, newsletters"""
 
             message = self.ai_client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model=self.ai_model,
                 max_tokens=200,
                 messages=[{"role": "user", "content": prompt}]
             )
             
-            import json
             response_text = message.content[0].text.strip()
             # Remove markdown code blocks if present
             if response_text.startswith('```'):
